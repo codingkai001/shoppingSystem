@@ -1,4 +1,6 @@
 from django.db import models
+from imagekit.models import ImageSpecField, ProcessedImageField
+from imagekit.processors import ResizeToFill
 
 
 class Seller(models.Model):
@@ -47,7 +49,7 @@ class Goods(models.Model):
     name = models.CharField(max_length=20, verbose_name='名字')
     quantity = models.IntegerField(default=0, verbose_name='库存')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name='所属商店')
-    image = models.URLField(verbose_name='商品图片URL')
+    image = ProcessedImageField(upload_to='goods_img', processors=[ResizeToFill(100, 100)], format='JPEG')
     unit_price = models.FloatField(verbose_name='单价')
 
     class Meta:

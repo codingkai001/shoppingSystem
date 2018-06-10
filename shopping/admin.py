@@ -22,7 +22,7 @@ class ShopAdmin(admin.ModelAdmin):
 
 @admin.register(Goods)
 class GoodsAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'quantity', 'shop', 'unit_price']
+    list_display = ['id', 'name', 'quantity', 'shop', 'unit_price', 'image']
     ordering = ['-id', ]
 
 
