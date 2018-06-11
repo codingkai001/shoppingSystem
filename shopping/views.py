@@ -1,5 +1,8 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import *
+import json
+from .models import Buyer, Seller
+from django.views.decorators.csrf import csrf_exempt
 
 
 @require_POST
@@ -12,14 +15,55 @@ def login(request):
     pass
 
 
+@csrf_exempt
 @require_POST
 def register(request):
     """
     user register
-    :param request:name,username,psw
+    :param request:name,username,psw，role(1 for seller,0 for buyer)
     :return: status code(success/fail)
     """
-    pass
+    try:
+        data = json.loads(request.body)
+        # if role is not passed, default role is buyer
+        role = data.get('role', 0)
+        # user is a seller
+        if role == 1:
+            username = data['username']
+            try:
+                user = Seller.objects.get(username=username)
+                # this user has been registered.
+                return JsonResponse({'status': 401})
+            # this user has not been registered.
+            except Seller.DoesNotExist:
+                name = data['name']
+                psw = data['psw']
+                new_seller = Seller()
+                new_seller.name = name
+                new_seller.username = username
+                new_seller.psw = psw
+                new_seller.save()
+        # user is abuyer
+        else:
+            username = data['username']
+            try:
+                user = Buyer.objects.get(username=username)
+                # this user has been registered.
+                return JsonResponse({'status': 401})
+            # this user has not been registered.
+            except Buyer.DoesNotExist:
+                name = data['name']
+                psw = data['psw']
+                new_buyer = Buyer()
+                new_buyer.name = name
+                new_buyer.username = username
+                new_buyer.psw = psw
+                new_buyer.save()
+
+        return JsonResponse({'status': 200})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 402})
 
 
 @require_POST
@@ -70,3 +114,12 @@ def get_shop_list(request):
     :return:shop list(json)
     """
     pass
+
+
+@csrf_exempt
+def test(request):
+    if request.method == 'GET':
+        return HttpResponse('get')
+
+    if request.method == 'POST':
+        return HttpResponse('post')
