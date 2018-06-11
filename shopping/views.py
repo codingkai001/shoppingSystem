@@ -1,18 +1,45 @@
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import *
 import json
-from .models import Buyer, Seller
+from .models import Buyer, Seller, Goods
 from django.views.decorators.csrf import csrf_exempt
 
 
+@csrf_exempt
 @require_POST
 def login(request):
     """
     user login
-    :param request:username,psw
-    :return: user`s data(json)
+    :param request:username,psw,role(1 for seller,0 for buyer)
+    :return: status code(success/fail)
     """
-    pass
+    try:
+        data = json.loads(request.body)
+        role = data['role']
+        # user is a seller
+        if role == 1:
+            username = data['username']
+            try:
+                seller = Seller.objects.get(username=username)
+                if seller.psw == data['psw']:
+                    return JsonResponse({'status': 200})
+                else:
+                    return JsonResponse({'status': 406})
+            except Seller.DoesNotExist:
+                return JsonResponse({'status': 406})
+        # user is a buyer
+        else:
+            username = data['username']
+            try:
+                buyer = Buyer.objects.get(username=username)
+                if buyer.psw == data['psw']:
+                    return JsonResponse({'status': 200})
+                else:
+                    return JsonResponse({'status': 406})
+            except Buyer.DoesNotExist:
+                return JsonResponse({'status': 406})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 402})
 
 
 @csrf_exempt
