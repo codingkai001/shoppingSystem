@@ -1,7 +1,7 @@
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import *
 import json
-from .models import Buyer, Seller, Goods
+from .models import Buyer, Seller, Goods, Shop
 from django.views.decorators.csrf import csrf_exempt
 
 
@@ -93,6 +93,7 @@ def register(request):
         return JsonResponse({'status': 402})
 
 
+@csrf_exempt
 @require_POST
 def add_shop(request):
     """
@@ -100,7 +101,23 @@ def add_shop(request):
     :param request: name,seller`s id
     :return:status code
     """
-    pass
+    try:
+        data = json.loads(request.body)
+        seller_id = data['id']
+        try:
+            seller = Seller.objects.get(id=seller_id)
+            name = data['name']
+            shop = Shop()
+            shop.seller = seller
+            shop.name = name
+            shop.save()
+        except Seller.DoesNotExist:
+            return JsonResponse({'status': 407})
+
+        return JsonResponse({'status': 200})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 402})
 
 
 @require_POST
