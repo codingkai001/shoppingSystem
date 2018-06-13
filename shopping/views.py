@@ -120,6 +120,7 @@ def add_shop(request):
         return JsonResponse({'status': 402})
 
 
+@csrf_exempt
 @require_POST
 def add_good(request):
     """
@@ -127,9 +128,24 @@ def add_good(request):
     :param request:name,quantity,image(file streaming),unit_price,shop_id
     :return:status code
     """
-    pass
+    try:
+        shop = Shop.objects.get(id=request.POST['shop_id'])
+        good = Goods()
+        good.image = request.FILES['img']
+        print(good.image.url)
+        # good.image.url = '4134343'
+        good.name = request.POST['name']
+        good.quantity = request.POST['quantity']
+        good.unit_price = request.POST['unit_price']
+        good.shop = shop
+        good.save()
+        return JsonResponse({'status': 200})
+
+    except Shop.DoesNotExist:
+        return JsonResponse({'status': 408})
 
 
+@csrf_exempt
 @require_POST
 def buy_good(request):
     """
