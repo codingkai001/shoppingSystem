@@ -1,8 +1,9 @@
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import *
 import json
-from .models import Buyer, Seller, Goods, Shop
+from .models import Buyer, Seller, Goods, Shop, BuyerGoods
 from django.views.decorators.csrf import csrf_exempt
+from django.core import serializers
 
 
 @csrf_exempt
@@ -153,7 +154,24 @@ def buy_good(request):
     :param request: buyer_id,good_id,quantity,status(1 for add,0 for cancel)
     :return:status code
     """
-    pass
+    try:
+        data = json.loads(request.body)
+        buyer = Buyer.objects.get(id=data['buyer_id'])
+        good = Goods.objects.get(id=data['good_id'])
+        quantity = data['quantity']
+        status = data['status']
+        item = BuyerGoods()
+        item.quantity = quantity
+        item.status = status
+        item.buyer = buyer
+        item.good = good
+        item.save()
+        return JsonResponse({'status': 200})
+
+    except (Buyer.DoesNotExist, Goods.DoesNotExist):
+        return JsonResponse({'status': 409})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 402})
 
 
 @require_GET
@@ -163,7 +181,19 @@ def get_goods_list(request):
     :param request: buyer_id
     :return:goods list(json)
     """
-    pass
+    try:
+        buyer = request.GET['buyer_id']
+        # content_type = request.META['CONTENT_TYPE']
+        good_list = BuyerGoods.objects.filter(buyer=buyer).filter(status=1)
+        # if good_list.count() == 0:
+        #     return JsonResponse({'status': 410})
+        data = serializers.serialize('json', good_list, fields=('buyer', 'good', 'quantity'), ensure_ascii=False)
+        return JsonResponse({'status': 200, 'data': data})
+    except KeyError:
+        return JsonResponse({'status': 410})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'status': 500})
 
 
 @require_GET
@@ -173,7 +203,16 @@ def get_shop_list(request):
     :param request:sller_id
     :return:shop list(json)
     """
-    pass
+    try:
+        seller = request.GET['seller_id']
+        shop_list = Shop.objects.filter(seller=seller)
+        data = serializers.serialize('json', shop_list, fields=('name', 'seller'), ensure_ascii=False)
+        return JsonResponse({'status': 200, 'data': data})
+    except KeyError:
+        return JsonResponse({'status': 410})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'status': 500})
 
 
 @csrf_exempt
@@ -182,4 +221,4 @@ def test(request):
         return HttpResponse('get')
 
     if request.method == 'POST':
-        return HttpResponse('post')
+        return JsonResponse({'data': '分割'})
