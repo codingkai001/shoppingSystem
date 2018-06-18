@@ -4,6 +4,7 @@ import json
 from .models import Buyer, Seller, Goods, Shop, BuyerGoods
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
+from datetime import datetime, timedelta
 
 
 @csrf_exempt
@@ -23,7 +24,10 @@ def login(request):
             try:
                 seller = Seller.objects.get(username=username)
                 if seller.psw == data['psw']:
-                    return JsonResponse({'status': 200})
+                    response = JsonResponse({'status': 200})
+                    # cookie一周内有效
+                    response.set_cookie("SID", str(seller.id), expires=datetime.now() + timedelta(days=7))
+                    return response
                 else:
                     return JsonResponse({'status': 406})
             except Seller.DoesNotExist:
@@ -34,7 +38,9 @@ def login(request):
             try:
                 buyer = Buyer.objects.get(username=username)
                 if buyer.psw == data['psw']:
-                    return JsonResponse({'status': 200})
+                    response = JsonResponse({'status': 200})
+                    response.set_cookie("BID", str(buyer.id), expires=datetime.now() + timedelta(days=7))
+                    return response
                 else:
                     return JsonResponse({'status': 406})
             except Buyer.DoesNotExist:
@@ -99,12 +105,12 @@ def register(request):
 def add_shop(request):
     """
     seller create a shop
-    :param request: name,seller`s id
+    :param request: name
     :return:status code
     """
     try:
         data = json.loads(request.body)
-        seller_id = data['id']
+        seller_id = request.COOKIES.get('SID', '')
         try:
             seller = Seller.objects.get(id=seller_id)
             name = data['name']
@@ -126,14 +132,15 @@ def add_shop(request):
 def add_good(request):
     """
     seller add goods to his/her shop
-    :param request:name,quantity,image(file streaming),unit_price,shop_id
+    :param request:name,quantity,image(file streaming),unit_price
     :return:status code
     """
     try:
-        shop = Shop.objects.get(id=request.POST['shop_id'])
+        shop_id = request.COOKIES['SHOPID']
+        shop = Shop.objects.get(id=shop_id)
         good = Goods()
         good.image = request.FILES['img']
-        print(good.image.url)
+        # print(good.image.url)
         # good.image.url = '4134343'
         good.name = request.POST['name']
         good.quantity = request.POST['quantity']
@@ -141,7 +148,8 @@ def add_good(request):
         good.shop = shop
         good.save()
         return JsonResponse({'status': 200})
-
+    except KeyError:
+        return JsonResponse({'status': 408})
     except Shop.DoesNotExist:
         return JsonResponse({'status': 408})
 
@@ -155,8 +163,9 @@ def buy_good(request):
     :return:status code
     """
     try:
+        buyer_id = request.COOKIES['BID']
         data = json.loads(request.body)
-        buyer = Buyer.objects.get(id=data['buyer_id'])
+        buyer = Buyer.objects.get(id=buyer_id)
         good = Goods.objects.get(id=data['good_id'])
         quantity = data['quantity']
         status = data['status']
@@ -167,8 +176,7 @@ def buy_good(request):
         item.good = good
         item.save()
         return JsonResponse({'status': 200})
-
-    except (Buyer.DoesNotExist, Goods.DoesNotExist):
+    except (Buyer.DoesNotExist, Goods.DoesNotExist, KeyError):
         return JsonResponse({'status': 409})
     except json.JSONDecodeError:
         return JsonResponse({'status': 402})
@@ -200,11 +208,11 @@ def get_goods_list(request):
 def get_shop_list(request):
     """
     seller get his/her all shop
-    :param request:sller_id
+    :param request:
     :return:shop list(json)
     """
     try:
-        seller = request.GET['seller_id']
+        seller = request.COOKIES.get('SID', '')
         shop_list = Shop.objects.filter(seller=seller)
         data = serializers.serialize('json', shop_list, fields=('name', 'seller'), ensure_ascii=False)
         return JsonResponse({'status': 200, 'data': data})
@@ -213,6 +221,62 @@ def get_shop_list(request):
     except Exception as e:
         print(e)
         return JsonResponse({'status': 500})
+
+
+@csrf_exempt
+@require_GET
+def show_shop(request):
+    """
+    show all shops to buyer
+    :param request:
+    :return: shop list
+    """
+    try:
+        shop_list = Shop.objects.all()
+        data = serializers.serialize('json', shop_list, fields=('name', 'seller'), ensure_ascii=False)
+        return JsonResponse({'status': 200, "data": data})
+
+    except Exception:
+        return JsonResponse({'status': 500})
+
+
+@csrf_exempt
+@require_GET
+def show_goods(request):
+    try:
+        shop = Shop.objects.get(id=request.GET['shop_id'])
+        goods_list = Goods.objects.filter(shop=shop)
+        good_detail = []
+
+        for good in goods_list:
+            item = {}  # 外部申明会覆盖
+            item['id'] = good.id
+            item['name'] = good.name
+            item['quantity'] = good.quantity
+            item['unit_price'] = good.unit_price
+            item['shop_id'] = good.shop.id
+            item['image_url'] = good.image.url
+            good_detail.append(item)
+
+        response = JsonResponse({'status': 200, 'data': good_detail})
+        return response
+    except (KeyError, Shop.DoesNotExist):
+        return JsonResponse({'status': 408})
+
+
+@csrf_exempt
+@require_POST
+def shop_detail(request):
+    try:
+        id = json.loads(request.body)['shop_id']
+        shop = Shop.objects.get(id=id)
+        response = JsonResponse({'status': 200, 'name': str(shop.name)})
+        response.set_cookie('SHOPID', shop.id)
+        return response
+    except Shop.DoesNotExist:
+        return JsonResponse({'status': 408})
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 402})
 
 
 @csrf_exempt

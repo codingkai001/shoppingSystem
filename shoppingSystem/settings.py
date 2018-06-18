@@ -25,7 +25,7 @@ SECRET_KEY = 'ne%k%7k=co=8^3eve28r42=oj%!kmh-lpcu&s&!1@nd$w%+0q='
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['122.152.234.248', '127.0.0.1', 'localhost', ]
 
 
 # Application definition
@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'rest_framework',
     'imagekit',
     'shopping.apps.ShoppingConfig'
 ]
@@ -124,7 +123,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
-
+STATIC_ROOT = 'static'
 STATIC_URL = '/static/'
 
 # REST_FRAMEWORK = {
